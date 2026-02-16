@@ -447,6 +447,7 @@
 
     <script>
         (function() {
+            // Altere estas constantes para o IP do seu servidor ao gerar o APK
             const API_BASE = 'http://localhost:8000';
             const WS_BASE = 'ws://localhost:8000';
             let token = localStorage.getItem('token') || null;
@@ -574,7 +575,6 @@
             }
 
             function handleIncomingMessage(msg) {
-                // Se a mensagem é do contato atual, adiciona na tela
                 if (currentView === 'chat' && msg.sender_id === currentContactId) {
                     const div = document.createElement('div');
                     div.className = 'message other';
@@ -582,7 +582,6 @@
                     chatMessages.appendChild(div);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
-                // Atualiza a lista de conversas (última mensagem)
                 updateConversationLastMessage(msg.sender_id, msg.content);
             }
 
@@ -678,13 +677,11 @@
                         method: 'POST',
                         body: JSON.stringify({ recipient_id: currentContactId, content: content.trim() })
                     });
-                    // Adiciona no chat local
                     const div = document.createElement('div');
                     div.className = 'message me';
                     div.textContent = newMsg.content;
                     chatMessages.appendChild(div);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
-                    // Atualiza última mensagem na lista
                     updateConversationLastMessage(currentContactId, newMsg.content);
                 } catch (e) {
                     console.error('Erro ao enviar mensagem', e);
