@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* (mesmo CSS anterior, mantido) */
         * {
             margin: 0;
             padding: 0;
@@ -448,17 +447,18 @@
 
     <script>
         (function() {
-            // Altere para o IP do servidor ao gerar APK
-            const API_BASE = 'http://localhost:8000';
-            const WS_BASE = 'ws://localhost:8000';
+            // Configuração do servidor (IP fixo)
+            const API_BASE = 'http://192.168.100.113:8000';
+            const WS_BASE = 'ws://192.168.100.113:8000';
             let token = localStorage.getItem('token') || null;
             let currentUser = null;
             let currentContactId = null;
             let currentContactName = '';
             let ws = null;
 
-            // Verifica se está no Capacitor (objeto global Capacitor existe)
+            // Detecta se está no Capacitor e se o plugin Http está disponível
             const isCapacitor = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+            const hasHttpPlugin = typeof Http !== 'undefined';
 
             // Elementos DOM
             const loginScreen = document.getElementById('login-screen');
@@ -488,7 +488,7 @@
 
             let currentView = 'conversations';
 
-            // === Função de requisição HTTP unificada (CapacitorHttp ou fetch) ===
+            // === Função de requisição HTTP unificada (usa Http no Capacitor, fetch no navegador) ===
             async function apiRequest(endpoint, options = {}) {
                 const url = `${API_BASE}${endpoint}`;
                 const headers = {
@@ -499,25 +499,38 @@
                     headers['Authorization'] = `Bearer ${token}`;
                 }
 
-                if (isCapacitor && window.CapacitorHttp) {
-                    // Usa CapacitorHttp
+                if (isCapacitor && hasHttpPlugin) {
+                    // Usa o plugin @capacitor/http
                     const method = options.method || 'GET';
                     const httpOptions = {
                         url: url,
                         headers: headers,
-                        method: method,
                     };
+
+                    // Adiciona corpo se existir (para POST/PUT)
                     if (options.body) {
-                        httpOptions.data = JSON.parse(options.body); // CapacitorHttp espera objeto, não string
+                        httpOptions.data = JSON.parse(options.body);
                     }
 
                     let response;
-                    if (method === 'GET') response = await CapacitorHttp.get(httpOptions);
-                    else if (method === 'POST') response = await CapacitorHttp.post(httpOptions);
-                    else if (method === 'PUT') response = await CapacitorHttp.put(httpOptions);
-                    else if (method === 'DELETE') response = await CapacitorHttp.delete(httpOptions);
-                    else throw new Error(`Método ${method} não suportado`);
+                    switch (method) {
+                        case 'GET':
+                            response = await Http.get(httpOptions);
+                            break;
+                        case 'POST':
+                            response = await Http.post(httpOptions);
+                            break;
+                        case 'PUT':
+                            response = await Http.put(httpOptions);
+                            break;
+                        case 'DELETE':
+                            response = await Http.delete(httpOptions);
+                            break;
+                        default:
+                            throw new Error(`Método ${method} não suportado`);
+                    }
 
+                    // Http retorna { data, status, headers }
                     if (response.status === 401) {
                         token = null;
                         localStorage.removeItem('token');
@@ -531,7 +544,7 @@
                     }
                     return response.data;
                 } else {
-                    // Fallback para fetch (navegador)
+                    // Fallback para fetch (navegador ou Capacitor sem plugin)
                     const response = await fetch(url, { ...options, headers });
                     if (response.status === 401) {
                         token = null;
@@ -548,38 +561,24 @@
                 }
             }
 
-            // === Função para upload de avatar (multipart) ===
+            // === Função para upload de avatar (usa fetch, pois multipart é mais simples) ===
             async function uploadAvatarRequest(file) {
                 const url = `${API_BASE}/users/me/avatar`;
                 const formData = new FormData();
                 formData.append('file', file);
 
-                if (isCapacitor && window.CapacitorHttp) {
-                    // Para Capacitor, precisamos converter FormData para algo que o plugin entenda?
-                    // O plugin CapacitorHttp suporta multipart via objeto 'data' com arquivos?
-                    // Na documentação, pode-se usar 'files' ou 'data' com Blob. Vamos tentar a abordagem mais simples:
-                    // Enviar como multipart usando fetch mesmo? Mas no Capacitor, fetch também funciona?
-                    // Para simplificar, vamos manter fetch para upload, pois o Capacitor também tem suporte a fetch.
-                    // Mas se quiser usar CapacitorHttp, é mais complexo. Vou manter fetch para upload.
-                    // Como o ambiente Capacitor também tem fetch, podemos usar fetch diretamente.
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` },
-                        body: formData
-                    });
-                    if (response.status === 401) throw new Error('Sessão expirada');
-                    if (!response.ok) throw new Error('Erro no upload');
-                    return response.json();
-                } else {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` },
-                        body: formData
-                    });
-                    if (response.status === 401) throw new Error('Sessão expirada');
-                    if (!response.ok) throw new Error('Erro no upload');
-                    return response.json();
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if (response.status === 401) {
+                    throw new Error('Sessão expirada');
                 }
+                if (!response.ok) {
+                    throw new Error('Erro no upload');
+                }
+                return response.json();
             }
 
             function showScreen(screenId) {
@@ -625,7 +624,7 @@
                 }
             }
 
-            // === WebSocket (mantém igual) ===
+            // === WebSocket ===
             function connectWebSocket() {
                 if (!token || !currentUser) return;
                 const wsUrl = `${WS_BASE}/ws/${currentUser.id}?token=${encodeURIComponent(token)}`;
@@ -672,7 +671,7 @@
                 }
             }
 
-            // === Carregar dados (usando apiRequest) ===
+            // === Carregar dados ===
             async function loadCurrentUser() {
                 try {
                     currentUser = await apiRequest('/users/me');
