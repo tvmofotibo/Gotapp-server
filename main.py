@@ -2,12 +2,13 @@ import os
 import shutil
 import asyncio
 import logging
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -21,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # === Configurações ===
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Troque em produção!
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -53,13 +54,19 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     sender_id = Column(Integer, ForeignKey("users.id"))
     recipient_id = Column(Integer, ForeignKey("users.id"))
-    content = Column(Text, nullable=False)
+    # NOVO: content pode ser nulo para áudio
+    content = Column(Text, nullable=True)
+    # NOVO: tipo da mensagem e URL do arquivo
+    message_type = Column(String, default='text')  # 'text' ou 'audio'
+    file_url = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
 
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_messages")
     recipient = relationship("User", foreign_keys=[recipient_id], back_populates="received_messages")
 
+# Recria as tabelas (em desenvolvimento). Em produção, use migrações.
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 # === Schemas ===
@@ -83,15 +90,21 @@ class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
     bio: Optional[str] = None
 
+# NOVO: Schema para envio de mensagem com tipo e URL
 class MessageSend(BaseModel):
     recipient_id: int
-    content: str
+    content: Optional[str] = None
+    message_type: str = 'text'  # 'text' ou 'audio'
+    file_url: Optional[str] = None
 
+# NOVO: Schema de saída com os campos adicionais
 class MessageOut(BaseModel):
     id: int
     sender_id: int
     recipient_id: int
-    content: str
+    content: Optional[str]
+    message_type: str
+    file_url: Optional[str]
     timestamp: datetime
     is_read: bool
 
@@ -154,28 +167,42 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-# === WebSocket Connection Manager ===
+# === WebSocket Connection Manager com suporte a chamadas ===
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[int, WebSocket] = {}
+        self.active_connections: Dict[int, Dict] = {}  # user_id -> {"ws": WebSocket, "name": str}
+        self.call_sessions: Dict[int, int] = {}  # user_id -> other_user_id (chamada ativa)
 
-    async def connect(self, websocket: WebSocket, user_id: int):
+    async def connect(self, websocket: WebSocket, user_id: int, user_name: str):
         await websocket.accept()
-        self.active_connections[user_id] = websocket
-        logger.info(f"Usuário {user_id} conectado via WebSocket")
+        self.active_connections[user_id] = {"ws": websocket, "name": user_name}
+        logger.info(f"Usuário {user_id} ({user_name}) conectado via WebSocket")
 
     def disconnect(self, user_id: int):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
+            # Se estava em chamada, notificar o outro lado e limpar
+            if user_id in self.call_sessions:
+                other = self.call_sessions.pop(user_id)
+                if other in self.call_sessions:
+                    del self.call_sessions[other]
+                # Se o outro ainda estiver online, enviar sinal de chamada encerrada
+                if other in self.active_connections:
+                    asyncio.create_task(self.send_personal_message({"type": "call_end", "from": user_id}, other))
             logger.info(f"Usuário {user_id} desconectado")
 
     async def send_personal_message(self, message: dict, user_id: int):
         if user_id in self.active_connections:
             try:
-                await self.active_connections[user_id].send_json(message)
+                await self.active_connections[user_id]["ws"].send_json(message)
                 logger.info(f"Mensagem enviada para usuário {user_id}")
             except Exception as e:
                 logger.error(f"Erro ao enviar mensagem para {user_id}: {e}")
+
+    def get_user_name(self, user_id: int) -> Optional[str]:
+        if user_id in self.active_connections:
+            return self.active_connections[user_id]["name"]
+        return None
 
 manager = ConnectionManager()
 
@@ -190,17 +217,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Cria pastas necessárias
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+os.makedirs("uploads/audio", exist_ok=True)  # NOVO: pasta para áudios
+os.makedirs("static", exist_ok=True)
 
-# === WebSocket endpoint ===
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# === WebSocket endpoint com signaling para chamadas ===
 @app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: int, token: str):
+async def websocket_endpoint(websocket: WebSocket, user_id: int, token: str, db: Session = Depends(get_db)):
     # Validar token
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         token_user_id = payload.get("sub")
-        # Converter para int para comparação (pois o token retorna string)
         if token_user_id is None or int(token_user_id) != user_id:
             logger.warning(f"Token user {token_user_id} não corresponde ao user_id {user_id}")
             await websocket.close(code=1008)
@@ -210,12 +241,93 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int, token: str):
         await websocket.close(code=1008)
         return
 
-    await manager.connect(websocket, user_id)
+    # Buscar nome do usuário no banco (para exibir nas chamadas)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect(websocket, user_id, user.name)
     try:
         while True:
-            # Manter conexão viva (pode receber pings ou mensagens, mas não usaremos agora)
-            await websocket.receive_text()
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+            target = data.get("target")  # ID do destinatário
+
+            if msg_type == "call_offer":
+                # Verificar se o destinatário está online e não ocupado
+                if target not in manager.active_connections:
+                    await manager.send_personal_message({"type": "call_offline"}, user_id)
+                    continue
+                if target in manager.call_sessions:
+                    await manager.send_personal_message({"type": "call_busy"}, user_id)
+                    continue
+
+                # Registrar chamada
+                manager.call_sessions[user_id] = target
+                manager.call_sessions[target] = user_id
+
+                # Encaminhar oferta com nome do remetente
+                await manager.send_personal_message({
+                    "type": "call_offer",
+                    "from": user_id,
+                    "fromName": user.name,
+                    "offer": data["offer"],
+                    "hasVideo": data.get("hasVideo", False),
+                    "hasAudio": data.get("hasAudio", True)
+                }, target)
+
+            elif msg_type == "call_answer":
+                if target in manager.active_connections:
+                    await manager.send_personal_message({
+                        "type": "call_answer",
+                        "from": user_id,
+                        "answer": data["answer"]
+                    }, target)
+
+            elif msg_type == "ice_candidate":
+                if target in manager.active_connections:
+                    await manager.send_personal_message({
+                        "type": "ice_candidate",
+                        "from": user_id,
+                        "candidate": data["candidate"]
+                    }, target)
+
+            elif msg_type == "call_end":
+                # Limpar sessão e avisar o outro participante
+                if user_id in manager.call_sessions:
+                    other = manager.call_sessions.pop(user_id)
+                    if other in manager.call_sessions:
+                        del manager.call_sessions[other]
+                    if other in manager.active_connections:
+                        await manager.send_personal_message({"type": "call_end", "from": user_id}, other)
+
+            elif msg_type == "call_reject":
+                # O destinatário recusou a chamada
+                if target in manager.active_connections:
+                    await manager.send_personal_message({"type": "call_reject", "from": user_id}, target)
+                # Limpar registro se existir (quem chamou)
+                if user_id in manager.call_sessions:
+                    other = manager.call_sessions.pop(user_id)
+                    if other in manager.call_sessions:
+                        del manager.call_sessions[other]
+
+            elif msg_type == "call_accept":
+                # O destinatário aceitou (já temos a chamada registrada)
+                if target in manager.active_connections:
+                    await manager.send_personal_message({
+                        "type": "call_accept",
+                        "from": user_id,
+                        "hasVideo": data.get("hasVideo", False)
+                    }, target)
+
+            else:
+                logger.warning(f"Tipo de mensagem desconhecido: {msg_type}")
+
     except WebSocketDisconnect:
+        manager.disconnect(user_id)
+    except Exception as e:
+        logger.error(f"Erro no WebSocket: {e}")
         manager.disconnect(user_id)
 
 # === Endpoints HTTP ===
@@ -290,11 +402,18 @@ def get_conversations(current_user: User = Depends(get_current_user), db: Sessio
             Message.recipient_id == current_user.id,
             Message.is_read == False
         ).count()
+        # NOVO: para exibir um ícone se for áudio
+        last_msg_display = None
+        if last_msg:
+            if last_msg.message_type == 'audio':
+                last_msg_display = '🎤 Áudio'
+            else:
+                last_msg_display = last_msg.content
         conversations.append({
             "user_id": other.id,
             "name": other.name,
             "avatar_url": other.avatar_url,
-            "last_message": last_msg.content if last_msg else None,
+            "last_message": last_msg_display,
             "last_message_time": last_msg.timestamp if last_msg else None,
             "unread_count": unread
         })
@@ -317,6 +436,20 @@ def get_messages(user_id: int, current_user: User = Depends(get_current_user), d
     db.commit()
     return messages
 
+# NOVO: endpoint para upload de áudio
+@app.post("/messages/audio")
+async def upload_audio(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    # Gera nome único
+    ext = os.path.splitext(file.filename)[1]
+    if not ext:
+        ext = '.webm'
+    filename = f"audio_{current_user.id}_{uuid4().hex}{ext}"
+    file_path = os.path.join("uploads", "audio", filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    file_url = f"/uploads/audio/{filename}"
+    return {"file_url": file_url}
+
 @app.post("/messages/", response_model=MessageOut)
 async def send_message(message: MessageSend, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     recipient = db.query(User).filter(User.id == message.recipient_id).first()
@@ -325,7 +458,9 @@ async def send_message(message: MessageSend, current_user: User = Depends(get_cu
     new_msg = Message(
         sender_id=current_user.id,
         recipient_id=message.recipient_id,
-        content=message.content
+        content=message.content,
+        message_type=message.message_type,
+        file_url=message.file_url
     )
     db.add(new_msg)
     db.commit()
@@ -337,15 +472,17 @@ async def send_message(message: MessageSend, current_user: User = Depends(get_cu
         "sender_id": new_msg.sender_id,
         "recipient_id": new_msg.recipient_id,
         "content": new_msg.content,
+        "message_type": new_msg.message_type,
+        "file_url": new_msg.file_url,
         "timestamp": new_msg.timestamp.isoformat(),
         "is_read": new_msg.is_read
     }
 
-    # Enviar apenas para o destinatário (evita duplicação no remetente)
+    # Enviar apenas para o destinatário
     asyncio.create_task(manager.send_personal_message(msg_data, message.recipient_id))
 
     return new_msg
 
 @app.get("/")
 def root():
-    return {"message": "Got App API está rodando!"}
+    return FileResponse("static/index.html")
