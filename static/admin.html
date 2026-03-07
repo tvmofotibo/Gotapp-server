@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>got app · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{height:100%;font-size:15px}
+:root{
+  --bg:#080b0f;--bg1:#0d1117;--bg2:#161b22;--bg3:#1c2330;--bg4:#21262d;
+  --bdr:rgba(255,255,255,.07);--bdrv:rgba(0,200,120,.3);
+  --t0:#e6edf3;--t1:#8b949e;--t2:#484f58;--t3:#30363d;
+  --g:#00c878;--g2:#39d98a;--gg:rgba(0,200,120,.15);
+  --r:#f85149;--rg:rgba(248,81,73,.12);
+  --y:#e3b341;--b:#58a6ff;--p:#bc8cff;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Sora',sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --sw:230px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--t0);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── LOGIN ── */
+#ls{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+#ls::before{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(0,200,120,.07),transparent 70%);top:-120px;left:-80px;pointer-events:none}
+#ls::after{content:'';position:absolute;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,rgba(188,140,255,.05),transparent 70%);bottom:-60px;right:-60px;pointer-events:none}
+.lbox{background:var(--bg2);border:1px solid var(--bdr);border-radius:16px;padding:42px 38px 36px;width:380px;position:relative;z-index:1;box-shadow:0 32px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.04);animation:boxIn .4s var(--spring) both}
+@keyframes boxIn{from{opacity:0;transform:translateY(24px) scale(.94)}to{opacity:1;transform:none}}
+.lbrand{display:flex;align-items:center;gap:10px;margin-bottom:30px}
+.llogo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#00c878,#39d98a);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:.85rem;color:#080b0f;box-shadow:0 4px 14px rgba(0,200,120,.4)}
+.lbname{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--t0)}
+.lbtag{font-size:.63rem;color:var(--g);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.ltitle{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;margin-bottom:6px}
+.lsub{font-size:.8rem;color:var(--t1);margin-bottom:24px}
+.lsub code{font-family:var(--mono);color:var(--g)}
+.lfield{margin-bottom:12px}
+.llabel{font-size:.68rem;font-family:var(--mono);color:var(--t1);letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px;display:block}
+.linput{width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:10px 13px;font-size:.87rem;color:var(--t0);outline:none;font-family:var(--sans);transition:border-color .18s,box-shadow .18s}
+.linput:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(0,200,120,.12)}
+.linput::placeholder{color:var(--t2)}
+.lbtn{width:100%;padding:11px;background:linear-gradient(135deg,#009e5c,#00c878);border:none;border-radius:8px;font-size:.88rem;font-weight:700;color:#080b0f;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 18px rgba(0,200,120,.35);transition:all .2s var(--ease);margin-top:4px}
+.lbtn:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,200,120,.45)}
+.lbtn:active{transform:scale(.97)}
+.lerr{margin-top:12px;padding:10px 13px;border-radius:8px;background:var(--rg);border:1px solid rgba(248,81,73,.25);color:var(--r);font-size:.78rem;text-align:center;animation:shake .28s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+/* ── APP SHELL ── */
+#app{display:none;min-height:100vh}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--bg1);border-right:1px solid var(--bdr);display:flex;flex-direction:column;z-index:100}
+.sb-brand{padding:20px 18px 18px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px}
+.sb-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#00c878,#39d98a);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:.8rem;color:#080b0f;box-shadow:0 2px 10px rgba(0,200,120,.3);flex-shrink:0}
+.sb-name{font-family:var(--mono);font-size:.84rem;font-weight:700;color:var(--t0)}
+.sb-tag{font-size:.62rem;color:var(--g);font-family:var(--mono);letter-spacing:.08em}
+.sb-chip{margin:10px 14px;background:var(--gg);border:1px solid var(--bdrv);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:7px}
+.sb-dot{width:6px;height:6px;border-radius:50%;background:var(--g);flex-shrink:0;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sb-chip-txt{font-family:var(--mono);font-size:.7rem;color:var(--g)}
+.sb-nav{flex:1;padding:10px 8px;overflow-y:auto}
+.nav-sec{margin-bottom:18px}
+.nav-sec-lbl{font-size:.6rem;font-family:var(--mono);color:var(--t2);letter-spacing:.1em;text-transform:uppercase;padding:0 10px;margin-bottom:3px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.82rem;color:var(--t1);transition:all .15s var(--ease);position:relative}
+.ni svg{width:15px;height:15px;flex-shrink:0;opacity:.65;transition:opacity .15s}
+.ni:hover{background:var(--bg3);color:var(--t0)}
+.ni:hover svg{opacity:1}
+.ni.active{background:rgba(0,200,120,.09);color:var(--g);font-weight:600}
+.ni.active svg{opacity:1}
+.ni.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:3px;border-radius:3px;background:var(--g)}
+.nbadge{margin-left:auto;background:var(--g);color:#080b0f;font-size:.6rem;font-weight:700;font-family:var(--mono);padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-footer{padding:12px 8px;border-top:1px solid var(--bdr)}
+.logoutbtn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.82rem;color:var(--t1);background:transparent;border:none;font-family:var(--sans);width:100%;transition:all .15s}
+.logoutbtn svg{width:15px;height:15px;opacity:.65}
+.logoutbtn:hover{background:var(--rg);color:var(--r)}
+.logoutbtn:hover svg{opacity:1}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:54px;padding:0 26px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:rgba(8,11,15,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50}
+.tb-title{font-size:.95rem;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+.tb-sub{font-size:.75rem;color:var(--t1);font-weight:400}
+.tb-user{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:5px 11px;font-family:var(--mono);font-size:.75rem;color:var(--g)}
+.tb-udot{width:5px;height:5px;border-radius:50%;background:var(--g);animation:pulse 2s ease infinite}
+.page{padding:24px;flex:1}
+
+/* ── STATS ── */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px;margin-bottom:26px}
+.sc{background:var(--bg2);border:1px solid var(--bdr);border-radius:12px;padding:16px 15px;display:flex;flex-direction:column;gap:6px;transition:border-color .18s,transform .2s var(--spring);animation:cIn .3s var(--spring) both;cursor:default}
+.sc:hover{border-color:var(--bdrv);transform:translateY(-2px)}
+@keyframes cIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.sc-lbl{font-size:.64rem;font-family:var(--mono);color:var(--t1);letter-spacing:.08em;text-transform:uppercase}
+.sc-val{font-family:var(--mono);font-size:1.75rem;font-weight:700;color:var(--t0);line-height:1}
+.sc-sub{font-size:.68rem;color:var(--t1)}
+.sc.g .sc-val{color:var(--g)}
+.sc.b .sc-val{color:var(--b)}
+.sc.p .sc-val{color:var(--p)}
+.sc.y .sc-val{color:var(--y)}
+
+/* ── SECTION HEADER ── */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sh-title{font-size:.9rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.sh-title svg{width:15px;height:15px;color:var(--g)}
+.sh-count{font-family:var(--mono);font-size:.69rem;color:var(--t1);background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;padding:2px 8px}
+
+/* ── SEARCH ── */
+.sbar{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:0 11px;margin-bottom:13px;transition:border-color .18s}
+.sbar:focus-within{border-color:var(--g)}
+.sbar svg{width:13px;height:13px;color:var(--t2);flex-shrink:0}
+.sbar input{flex:1;background:transparent;border:none;outline:none;padding:9px 0;font-size:.82rem;color:var(--t0);font-family:var(--sans)}
+.sbar input::placeholder{color:var(--t2)}
+
+/* ── TABLE ── */
+.tw{background:var(--bg2);border:1px solid var(--bdr);border-radius:12px;overflow:hidden;overflow-x:auto}
+.dt{width:100%;border-collapse:collapse;min-width:600px}
+.dt thead tr{background:var(--bg3);border-bottom:1px solid var(--bdr)}
+.dt th{padding:10px 13px;text-align:left;font-family:var(--mono);font-size:.63rem;color:var(--t1);letter-spacing:.08em;text-transform:uppercase;font-weight:500;white-space:nowrap}
+.dt tbody tr{border-bottom:1px solid var(--bdr);transition:background .12s}
+.dt tbody tr:last-child{border-bottom:none}
+.dt tbody tr:hover{background:var(--bg3)}
+.dt td{padding:10px 13px;font-size:.8rem;color:var(--t0);vertical-align:middle}
+.dt td.mo{font-family:var(--mono);font-size:.74rem}
+.dt td.mu{color:var(--t1)}
+.tr-empty td{padding:36px 20px;text-align:center;color:var(--t2);font-size:.78rem;font-family:var(--mono)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:5px;font-size:.64rem;font-weight:600;font-family:var(--mono);white-space:nowrap}
+.badge.g{background:rgba(0,200,120,.1);color:var(--g);border:1px solid rgba(0,200,120,.22)}
+.badge.r{background:var(--rg);color:var(--r);border:1px solid rgba(248,81,73,.22)}
+.badge.b{background:rgba(88,166,255,.09);color:var(--b);border:1px solid rgba(88,166,255,.2)}
+.badge.p{background:rgba(188,140,255,.09);color:var(--p);border:1px solid rgba(188,140,255,.2)}
+.badge.y{background:rgba(227,179,65,.09);color:var(--y);border:1px solid rgba(227,179,65,.2)}
+
+/* ── USER CELL ── */
+.uc{display:flex;align-items:center;gap:8px}
+.uc-av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--bdr);flex-shrink:0;background:var(--bg3)}
+.uc-name{font-weight:600;font-size:.8rem;line-height:1.2}
+.uc-un{font-size:.66rem;color:var(--t1);font-family:var(--mono)}
+
+/* ── ACTION BTNS ── */
+.acts{display:flex;align-items:center;gap:5px}
+.ab{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:all .14s;flex-shrink:0}
+.ab svg{width:13px;height:13px}
+.ab.edit{background:rgba(88,166,255,.1);color:var(--b);border:1px solid rgba(88,166,255,.18)}
+.ab.edit:hover{background:rgba(88,166,255,.2);transform:scale(1.1)}
+.ab.del{background:var(--rg);color:var(--r);border:1px solid rgba(248,81,73,.18)}
+.ab.del:hover{background:rgba(248,81,73,.22);transform:scale(1.1)}
+
+/* ── MODAL ── */
+.mov{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.65);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;animation:fIn .16s ease}
+@keyframes fIn{from{opacity:0}to{opacity:1}}
+.mbox{background:var(--bg2);border:1px solid var(--bdrv);border-radius:14px;padding:24px 22px 20px;max-width:460px;width:94%;box-shadow:0 24px 60px rgba(0,0,0,.7);animation:mIn .26s var(--spring);max-height:90vh;overflow-y:auto}
+@keyframes mIn{from{opacity:0;transform:scale(.86) translateY(18px)}to{opacity:1;transform:none}}
+.mt{font-size:.92rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:var(--t0)}
+.mrow{margin-bottom:13px}
+.mrow label{display:block;font-size:.65rem;font-family:var(--mono);color:var(--t1);letter-spacing:.07em;text-transform:uppercase;margin-bottom:5px}
+.minput{width:100%;background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;padding:9px 12px;font-size:.84rem;color:var(--t0);outline:none;font-family:var(--sans);transition:border-color .18s,box-shadow .18s;resize:vertical}
+.minput:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(0,200,120,.1)}
+.minput::placeholder{color:var(--t2)}
+textarea.minput{min-height:70px}
+.mhint{font-size:.68rem;color:var(--t2);margin-top:4px;font-family:var(--mono)}
+.macts{display:flex;gap:7px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--bdr)}
+.mbtn{padding:8px 17px;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:all .14s}
+.mbtn.cancel{background:var(--bg3);color:var(--t1);border:1px solid var(--bdr)}
+.mbtn.cancel:hover{color:var(--t0);border-color:rgba(255,255,255,.14)}
+.mbtn.save{background:var(--g);color:#080b0f;box-shadow:0 3px 12px rgba(0,200,120,.3)}
+.mbtn.save:hover{opacity:.88}
+.mbtn.danger{background:var(--r);color:#fff;box-shadow:0 3px 12px rgba(248,81,73,.3)}
+.mbtn.danger:hover{opacity:.88}
+.mdivider{height:1px;background:var(--bdr);margin:14px 0}
+.msec-title{font-size:.7rem;font-family:var(--mono);color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+
+/* ── CONFIRM MODAL ── */
+.cbox{max-width:360px}
+.cbody{font-size:.82rem;color:var(--t1);line-height:1.6;margin-bottom:4px}
+.cbody strong{color:var(--t0)}
+
+/* ── TOAST ── */
+#toasts{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column-reverse;gap:7px}
+.toast{padding:10px 14px;border-radius:9px;font-size:.79rem;display:flex;align-items:center;gap:8px;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:tIn .22s var(--spring) both,tOut .2s ease 3.5s forwards;pointer-events:none}
+.toast.ok{background:rgba(0,200,120,.13);border:1px solid rgba(0,200,120,.28);color:var(--g2)}
+.toast.err{background:var(--rg);border:1px solid rgba(248,81,73,.28);color:var(--r)}
+@keyframes tIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes tOut{to{opacity:0;transform:translateX(12px)}}
+
+/* ── MISC ── */
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.12);border-top-color:var(--g);animation:spin .55s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+*{scrollbar-width:thin;scrollbar-color:var(--bg3) transparent}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="ls">
+  <div class="lbox">
+    <div class="lbrand">
+      <div class="llogo">GA</div>
+      <div>
+        <div class="lbname">got app</div>
+        <div class="lbtag">Admin Console</div>
+      </div>
+    </div>
+    <div class="ltitle">Acesso restrito</div>
+    <div class="lsub">Apenas <code>@hydra</code> pode entrar aqui.</div>
+    <div class="lfield"><label class="llabel">E-mail</label><input class="linput" type="email" id="l-email" placeholder="email@dominio.com" autocomplete="username"></div>
+    <div class="lfield"><label class="llabel">Senha</label><input class="linput" type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="lbtn" id="l-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Entrar no painel
+    </button>
+    <div id="l-err" class="lerr hidden"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">GA</div>
+      <div><div class="sb-name">got app</div><div class="sb-tag">Admin</div></div>
+    </div>
+    <div class="sb-chip"><div class="sb-dot"></div><span class="sb-chip-txt" id="sb-un">@hydra</span></div>
+    <div class="sb-nav">
+      <div class="nav-sec">
+        <div class="nav-sec-lbl">Overview</div>
+        <div class="ni active" data-page="dash">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+        </div>
+      </div>
+      <div class="nav-sec">
+        <div class="nav-sec-lbl">Gerenciar</div>
+        <div class="ni" data-page="users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Usuários<span class="nbadge" id="nb-u">—</span>
+        </div>
+        <div class="ni" data-page="posts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posts<span class="nbadge" id="nb-p">—</span>
+        </div>
+        <div class="ni" data-page="reels">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Reels<span class="nbadge" id="nb-r">—</span>
+        </div>
+        <div class="ni" data-page="msgs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Mensagens<span class="nbadge" id="nb-m">—</span>
+        </div>
+      </div>
+    </div>
+    <div class="sb-footer">
+      <button class="logoutbtn" id="logout-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sair
+      </button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="tb-title" id="tb-title">Dashboard <span class="tb-sub" id="tb-sub"></span></div>
+      <div class="tb-user"><div class="tb-udot"></div><span id="tb-un">@hydra</span></div>
+    </div>
+    <div class="page">
+
+      <!-- DASHBOARD -->
+      <div id="page-dash">
+        <div class="sgrid" id="sgrid"><div class="sc"><div class="sc-lbl">Carregando</div><div class="sc-val"><span class="spin"></span></div></div></div>
+        <div class="sh"><div class="sh-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Últimos cadastros</div><span class="sh-count" id="d-uc">—</span></div>
+        <div class="tw"><table class="dt"><thead><tr><th>Usuário</th><th>Username</th><th>E-mail</th><th>Posts</th><th>Cadastro</th></tr></thead><tbody id="d-tbody"><tr class="tr-empty"><td colspan="5">Carregando…</td></tr></tbody></table></div>
+      </div>
+
+      <!-- USERS -->
+      <div id="page-users" class="hidden">
+        <div class="sbar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input type="text" id="u-search" placeholder="Buscar nome, @username ou email…"></div>
+        <div class="sh"><div class="sh-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Usuários</div><span class="sh-count" id="u-count">—</span></div>
+        <div class="tw"><table class="dt"><thead><tr><th>Usuário</th><th>Username</th><th>Email</th><th>Posts</th><th>Seguidores</th><th>Msgs</th><th>Cadastro</th><th>Ações</th></tr></thead><tbody id="u-tbody"><tr class="tr-empty"><td colspan="8">Carregando…</td></tr></tbody></table></div>
+      </div>
+
+      <!-- POSTS -->
+      <div id="page-posts" class="hidden">
+        <div class="sh"><div class="sh-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Posts</div><span class="sh-count" id="p-count">—</span></div>
+        <div class="tw"><table class="dt"><thead><tr><th>ID</th><th>Autor</th><th>Tipo</th><th>Conteúdo</th><th>Legenda</th><th>Data</th><th>Ações</th></tr></thead><tbody id="p-tbody"><tr class="tr-empty"><td colspan="7">Carregando…</td></tr></tbody></table></div>
+      </div>
+
+      <!-- REELS -->
+      <div id="page-reels" class="hidden">
+        <div class="sh"><div class="sh-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Reels</div><span class="sh-count" id="r-count">—</span></div>
+        <div class="tw"><table class="dt"><thead><tr><th>ID</th><th>Autor</th><th>YouTube ID</th><th>Legenda</th><th>Data</th><th>Ações</th></tr></thead><tbody id="r-tbody"><tr class="tr-empty"><td colspan="6">Carregando…</td></tr></tbody></table></div>
+      </div>
+
+      <!-- MESSAGES -->
+      <div id="page-msgs" class="hidden">
+        <div class="sbar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><input type="text" id="m-search" placeholder="Buscar por username…"></div>
+        <div class="sh"><div class="sh-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Mensagens</div><span class="sh-count" id="m-count">—</span></div>
+        <div class="tw"><table class="dt"><thead><tr><th>ID</th><th>De</th><th>Para</th><th>Tipo</th><th>Conteúdo</th><th>Data</th><th>Ações</th></tr></thead><tbody id="m-tbody"><tr class="tr-empty"><td colspan="7">Carregando…</td></tr></tbody></table></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modal" class="mov hidden">
+  <div class="mbox" id="mbox-inner"></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+(function(){
+'use strict';
+const API=window.location.origin;
+let token=localStorage.getItem('adm_tok')||null;
+let me=null;
+let allUsers=[],allMsgs=[];
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtDate=dt=>dt?new Date(dt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const av=(url,name,s=28)=>`<img class="uc-av" style="width:${s}px;height:${s}px" src="${url?API+url:`https://ui-avatars.com/api/?name=${encodeURIComponent(name||'?')}&background=1c2330&color=00c878&size=${s}&bold=true`}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(name||'?')}&background=1c2330&color=00c878&size=${s}&bold=true'" alt="">`;
+
+function toast(msg,type='ok'){
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span><span>${esc(msg)}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{el.style.animation='tOut .2s ease forwards';setTimeout(()=>el.remove(),220);},3500);
+}
+
+// Faz chamada autenticada — NUNCA chama doLogout automaticamente
+async function api(ep, opts={}){
+  const h={'Content-Type':'application/json','Authorization':`Bearer ${token}`};
+  const r=await fetch(API+ep,{...opts,headers:{...h,...(opts.headers||{})}});
+  if(!r.ok){
+    const e=await r.json().catch(()=>({}));
+    throw new Error(e.detail||`Erro ${r.status}`);
+  }
+  return r.json();
+}
+
+/* ── AUTH ── */
+async function doLogin(){
+  const btn=$('l-btn');
+  $('l-err').classList.add('hidden');
+  btn.innerHTML='<span class="spin"></span>';btn.disabled=true;
+  try{
+    const r=await fetch(API+'/admin/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:$('l-email').value,password:$('l-pass').value})
+    });
+    const data=await r.json();
+    if(!r.ok) throw new Error(data.detail||'E-mail ou senha incorretos');
+    // Salva token ANTES de qualquer outra coisa
+    token=data.access_token;
+    localStorage.setItem('adm_tok',token);
+    me={username:'hydra'};
+    showApp();
+  }catch(e){
+    token=null;
+    $('l-err').textContent=e.message;
+    $('l-err').classList.remove('hidden');
+  }finally{
+    btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Entrar no painel';
+    btn.disabled=false;
+  }
+}
+function doLogout(){
+  token=null;me=null;
+  localStorage.removeItem('adm_tok');
+  location.reload();
+}
+function showApp(){
+  $('ls').style.display='none';$('app').style.display='block';
+  const un='@'+(me?.username||'hydra');
+  $('sb-un').textContent=un;$('tb-un').textContent=un;
+  goPage('dash');
+}
+
+/* ── NAV ── */
+function goPage(p){
+  ['dash','users','posts','reels','msgs'].forEach(x=>{$('page-'+x).classList.add('hidden')});
+  $('page-'+p).classList.remove('hidden');
+  document.querySelectorAll('.ni').forEach(el=>el.classList.toggle('active',el.dataset.page===p));
+  const titles={dash:'Dashboard',users:'Usuários',posts:'Posts',reels:'Reels',msgs:'Mensagens'};
+  $('tb-title').firstChild.textContent=titles[p]||p;
+  if(p==='dash')loadDash();
+  if(p==='users')loadUsers();
+  if(p==='posts')loadPosts();
+  if(p==='reels')loadReels();
+  if(p==='msgs')loadMsgs();
+}
+document.querySelectorAll('.ni[data-page]').forEach(el=>el.addEventListener('click',()=>goPage(el.dataset.page)));
+
+/* ── MODAL ── */
+function openModal(html){$('mbox-inner').innerHTML=html;$('modal').classList.remove('hidden');}
+function closeModal(){$('modal').classList.add('hidden');}
+$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal();});
+
+/* ── DASHBOARD ── */
+async function loadDash(){
+  $('sgrid').innerHTML='<div class="sc"><div class="sc-lbl">Carregando…</div><div class="sc-val"><span class="spin"></span></div></div>';
+  try{
+    const [stats,users]=await Promise.all([api('/admin/api/stats'),api('/admin/api/users?limit=10')]);
+    $('nb-u').textContent=stats.total_users;$('nb-p').textContent=stats.total_posts;
+    $('nb-r').textContent=stats.total_reels;$('nb-m').textContent=stats.total_messages;
+    const cards=[
+      {l:'Usuários',v:stats.total_users,s:`+${stats.new_users_today} hoje`,c:'g'},
+      {l:'Posts',v:stats.total_posts,s:`+${stats.new_posts_today} hoje`,c:'b'},
+      {l:'Reels',v:stats.total_reels,s:'vídeos',c:'p'},
+      {l:'Mensagens',v:stats.total_messages,s:'enviadas',c:'y'},
+      {l:'Follows',v:stats.total_follows,s:'conexões',c:''},
+    ];
+    $('sgrid').innerHTML=cards.map((c,i)=>`<div class="sc ${c.c}" style="animation-delay:${i*.05}s"><div class="sc-lbl">${c.l}</div><div class="sc-val">${c.v.toLocaleString('pt-BR')}</div><div class="sc-sub">${c.s}</div></div>`).join('');
+    $('d-uc').textContent=stats.total_users+' total';
+    $('d-tbody').innerHTML=users.map(u=>`<tr><td><div class="uc">${av(u.avatar_url,u.name)}<div><div class="uc-name">${esc(u.name)}</div></div></div></td><td class="mo" style="color:var(--g)">@${esc(u.username)}</td><td class="mo mu trunc">${esc(u.email)}</td><td><span class="badge b">${u.posts_count+u.reels_count}</span></td><td class="mu">${fmtDate(u.created_at)}</td></tr>`).join('')||'<tr class="tr-empty"><td colspan="5">Nenhum usuário</td></tr>';
+  }catch(e){toast(e.message,'err');}
+}
+
+/* ── USERS ── */
+async function loadUsers(){
+  $('u-tbody').innerHTML='<tr class="tr-empty"><td colspan="8"><span class="spin"></span> Carregando…</td></tr>';
+  try{
+    allUsers=await api('/admin/api/users?limit=500');
+    $('u-count').textContent=allUsers.length+' usuários';
+    renderUsers(allUsers);
+  }catch(e){toast(e.message,'err');}
+}
+
+function renderUsers(list){
+  $('u-tbody').innerHTML=list.length?list.map(u=>`
+    <tr id="urow-${u.id}">
+      <td><div class="uc">${av(u.avatar_url,u.name)}<div><div class="uc-name">${esc(u.name)}</div></div></div></td>
+      <td class="mo" style="color:var(--g)">@${esc(u.username)}</td>
+      <td class="mo mu trunc">${esc(u.email)}</td>
+      <td><span class="badge b">${u.posts_count+u.reels_count}</span></td>
+      <td><span class="badge g">${u.followers_count}</span></td>
+      <td class="mu">${u.messages_sent}</td>
+      <td class="mu">${fmtDate(u.created_at)}</td>
+      <td><div class="acts">
+        <button class="ab edit" title="Editar" onclick="editUser(${u.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        ${u.username.toLowerCase()==='hydra'?'':'<button class="ab del" title="Deletar" onclick="confirmDeleteUser('+u.id+',\''+esc(u.username)+'\')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>'}
+      </div></td>
+    </tr>`).join(''):'<tr class="tr-empty"><td colspan="8">Nenhum usuário encontrado.</td></tr>';
+}
+
+let uSearchTimer;
+$('u-search').addEventListener('input',e=>{
+  clearTimeout(uSearchTimer);
+  uSearchTimer=setTimeout(()=>{
+    const q=e.target.value.toLowerCase();
+    const f=allUsers.filter(u=>u.name.toLowerCase().includes(q)||u.username.toLowerCase().includes(q)||u.email.toLowerCase().includes(q));
+    $('u-count').textContent=f.length+' usuários';
+    renderUsers(f);
+  },200);
+});
+
+window.editUser=function(id){
+  const u=allUsers.find(x=>x.id===id);
+  if(!u)return;
+  openModal(`
+    <div class="mt"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--b)" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar usuário <span class="mo" style="color:var(--g);font-size:.8rem">@${esc(u.username)}</span></div>
+    <div class="msec-title">Informações pessoais</div>
+    <div class="mrow"><label>Nome completo</label><input class="minput" id="eu-name" value="${esc(u.name)}" placeholder="Nome"></div>
+    <div class="mrow"><label>Username (sem @)</label><input class="minput" id="eu-un" value="${esc(u.username)}" placeholder="username"></div>
+    <div class="mrow"><label>E-mail</label><input class="minput" id="eu-email" type="email" value="${esc(u.email)}" placeholder="email@dominio.com"></div>
+    <div class="mrow"><label>Bio</label><textarea class="minput" id="eu-bio" placeholder="Bio do usuário">${esc(u.bio)}</textarea></div>
+    <div class="mdivider"></div>
+    <div class="msec-title">Redefinir senha</div>
+    <div class="mrow"><label>Nova senha <span style="color:var(--t2)">(deixe em branco para não alterar)</span></label><input class="minput" id="eu-pwd" type="password" placeholder="Nova senha (mín. 6 chars)"></div>
+    <div class="mhint">ID: ${u.id} · Cadastro: ${fmtDate(u.created_at)}</div>
+    <div class="macts">
+      <button class="mbtn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="mbtn save" onclick="saveUser(${u.id})">Salvar alterações</button>
+    </div>`);
+};
+
+window.saveUser=async function(id){
+  const body={};
+  const name=$('eu-name').value.trim();
+  const un=$('eu-un').value.trim();
+  const email=$('eu-email').value.trim();
+  const bio=$('eu-bio').value;
+  const pwd=$('eu-pwd').value;
+  if(name) body.name=name;
+  if(un) body.username=un;
+  if(email) body.email=email;
+  body.bio=bio;
+  if(pwd) body.new_password=pwd;
+  try{
+    const updated=await api(`/admin/api/users/${id}`,{method:'PATCH',body:JSON.stringify(body)});
+    allUsers=allUsers.map(u=>u.id===id?{...u,...updated}:u);
+    renderUsers(allUsers);
+    $('u-count').textContent=allUsers.length+' usuários';
+    closeModal();toast(`@${updated.username} atualizado!`);
+  }catch(e){toast(e.message,'err');}
+};
+
+window.confirmDeleteUser=function(id,username){
+  openModal(`
+    <div class="mt"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--r)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Deletar usuário</div>
+    <div class="cbody">Deletar <strong>@${esc(username)}</strong> permanentemente?<br><br>Isso remove <strong>todos</strong> os posts, reels, mensagens e follows.</div>
+    <div class="macts">
+      <button class="mbtn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="mbtn danger" onclick="deleteUser(${id},'${esc(username)}')">Deletar permanentemente</button>
+    </div>`);
+};
+
+window.deleteUser=async function(id,username){
+  closeModal();
+  try{
+    await api(`/admin/api/users/${id}`,{method:'DELETE'});
+    allUsers=allUsers.filter(u=>u.id!==id);
+    renderUsers(allUsers);$('u-count').textContent=allUsers.length+' usuários';
+    toast(`@${username} deletado.`);
+  }catch(e){toast(e.message,'err');}
+};
+
+/* ── POSTS ── */
+let allPosts=[];
+async function loadPosts(){
+  $('p-tbody').innerHTML='<tr class="tr-empty"><td colspan="7"><span class="spin"></span> Carregando…</td></tr>';
+  try{
+    allPosts=await api('/admin/api/posts?limit=500');
+    $('p-count').textContent=allPosts.length+' posts';
+    renderPosts(allPosts);
+  }catch(e){toast(e.message,'err');}
+}
+
+function renderPosts(list){
+  $('p-tbody').innerHTML=list.length?list.map(p=>`
+    <tr id="prow-${p.id}">
+      <td class="mo mu">#${p.id}</td>
+      <td class="mo" style="color:var(--g)">@${esc(p.username)}</td>
+      <td><span class="badge ${p.post_type==='text'?'b':'p'}">${p.post_type}</span></td>
+      <td class="mu trunc">${esc(p.text_content||'—')}</td>
+      <td class="mu trunc">${esc(p.caption||'—')}</td>
+      <td class="mu">${fmtDate(p.created_at)}</td>
+      <td><div class="acts">
+        <button class="ab edit" title="Editar" onclick="editPost(${p.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ab del" title="Deletar" onclick="confirmDeletePost(${p.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+      </div></td>
+    </tr>`).join(''):'<tr class="tr-empty"><td colspan="7">Nenhum post.</td></tr>';
+}
+
+window.editPost=function(id){
+  const p=allPosts.find(x=>x.id===id);if(!p)return;
+  openModal(`
+    <div class="mt"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--b)" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar post <span class="mo mu">#${p.id}</span></div>
+    <div class="mrow"><label>Conteúdo de texto</label><textarea class="minput" id="ep-txt" placeholder="Texto do post">${esc(p.text_content||'')}</textarea></div>
+    <div class="mrow"><label>Legenda / Caption</label><textarea class="minput" id="ep-cap" placeholder="Legenda">${esc(p.caption||'')}</textarea></div>
+    <div class="mhint">Autor: @${esc(p.username)} · ${fmtDate(p.created_at)}</div>
+    <div class="macts">
+      <button class="mbtn cancel" onclick="closeModal()">Cancelar</button>
+      <button class="mbtn save" onclick="savePost(${p.id})">Salvar</button>
+    </div>`);
+};
+
+window.savePost=async function(id){
+  try{
+    const updated=await api(`/admin/api/posts/${id}`,{method:'PATCH',body:JSON.stringify({text_content:$('ep-txt').value,caption:$('ep-cap').value})});
+    allPosts=allPosts.map(p=>p.id===id?{...p,...updated}:p);
+    renderPosts(allPosts);closeModal();toast('Post atualizado!');
+  }catch(e){toast(e.message,'err');}
+};
+
+window.confirmDeletePost=function(id){
+  openModal(`<div class="mt">Deletar post <span class="mo mu">#${id}</span>?</div><div class="cbody">Esta ação é irreversível.</div><div class="macts"><button class="mbtn cancel" onclick="closeModal()">Cancelar</button><button class="mbtn danger" onclick="deletePost(${id})">Deletar</button></div>`);
+};
+window.deletePost=async function(id){
+  closeModal();
+  try{await api(`/admin/api/posts/${id}`,{method:'DELETE'});allPosts=allPosts.filter(p=>p.id!==id);renderPosts(allPosts);$('p-count').textContent=allPosts.length+' posts';toast('Post deletado.');}
+  catch(e){toast(e.message,'err');}
+};
+
+/* ── REELS ── */
+let allReels=[];
+async function loadReels(){
+  $('r-tbody').innerHTML='<tr class="tr-empty"><td colspan="6"><span class="spin"></span> Carregando…</td></tr>';
+  try{
+    allReels=await api('/admin/api/reels?limit=500');
+    $('r-count').textContent=allReels.length+' reels';
+    renderReels(allReels);
+  }catch(e){toast(e.message,'err');}
+}
+
+function renderReels(list){
+  $('r-tbody').innerHTML=list.length?list.map(r=>`
+    <tr id="rrow-${r.id}">
+      <td class="mo mu">#${r.id}</td>
+      <td class="mo" style="color:var(--g)">@${esc(r.username)}</td>
+      <td><a href="https://youtu.be/${r.youtube_id}" target="_blank" class="badge r" style="text-decoration:none">▶ ${esc(r.youtube_id)}</a></td>
+      <td class="mu trunc">${esc(r.caption||'—')}</td>
+      <td class="mu">${fmtDate(r.created_at)}</td>
+      <td><div class="acts">
+        <button class="ab edit" title="Editar" onclick="editReel(${r.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ab del" title="Deletar" onclick="confirmDeleteReel(${r.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+      </div></td>
+    </tr>`).join(''):'<tr class="tr-empty"><td colspan="6">Nenhum reel.</td></tr>';
+}
+
+window.editReel=function(id){
+  const r=allReels.find(x=>x.id===id);if(!r)return;
+  openModal(`
+    <div class="mt">Editar reel <span class="mo mu">#${r.id}</span></div>
+    <div class="mrow"><label>YouTube ID</label><input class="minput" id="er-yt" value="${esc(r.youtube_id)}" placeholder="dQw4w9WgXcQ"></div>
+    <div class="mrow"><label>Legenda</label><textarea class="minput" id="er-cap">${esc(r.caption||'')}</textarea></div>
+    <div class="mhint">Autor: @${esc(r.username)} · ${fmtDate(r.created_at)}</div>
+    <div class="macts"><button class="mbtn cancel" onclick="closeModal()">Cancelar</button><button class="mbtn save" onclick="saveReel(${r.id})">Salvar</button></div>`);
+};
+window.saveReel=async function(id){
+  try{const updated=await api(`/admin/api/reels/${id}`,{method:'PATCH',body:JSON.stringify({youtube_id:$('er-yt').value.trim(),caption:$('er-cap').value})});allReels=allReels.map(r=>r.id===id?{...r,...updated}:r);renderReels(allReels);closeModal();toast('Reel atualizado!');}catch(e){toast(e.message,'err');}
+};
+window.confirmDeleteReel=function(id){openModal(`<div class="mt">Deletar reel <span class="mo mu">#${id}</span>?</div><div class="cbody">Irreversível.</div><div class="macts"><button class="mbtn cancel" onclick="closeModal()">Cancelar</button><button class="mbtn danger" onclick="deleteReel(${id})">Deletar</button></div>`);};
+window.deleteReel=async function(id){closeModal();try{await api(`/admin/api/reels/${id}`,{method:'DELETE'});allReels=allReels.filter(r=>r.id!==id);renderReels(allReels);$('r-count').textContent=allReels.length+' reels';toast('Reel deletado.');}catch(e){toast(e.message,'err');}};
+
+/* ── MESSAGES ── */
+async function loadMsgs(){
+  $('m-tbody').innerHTML='<tr class="tr-empty"><td colspan="7"><span class="spin"></span> Carregando…</td></tr>';
+  try{
+    allMsgs=await api('/admin/api/messages?limit=500');
+    $('m-count').textContent=allMsgs.length+' mensagens';
+    renderMsgs(allMsgs);
+  }catch(e){toast(e.message,'err');}
+}
+
+function renderMsgs(list){
+  $('m-tbody').innerHTML=list.length?list.map(m=>`
+    <tr id="mrow-${m.id}">
+      <td class="mo mu">#${m.id}</td>
+      <td class="mo" style="color:var(--g)">@${esc(m.sender_username)}</td>
+      <td class="mo" style="color:var(--b)">@${esc(m.recipient_username)}</td>
+      <td><span class="badge ${m.message_type==='audio'?'y':'b'}">${m.message_type}</span></td>
+      <td class="mu trunc">${esc(m.content||'[arquivo]')}</td>
+      <td class="mu">${fmtDate(m.timestamp)}</td>
+      <td><div class="acts">
+        <button class="ab edit" title="Editar conteúdo" onclick="editMsg(${m.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="ab del" title="Deletar" onclick="confirmDeleteMsg(${m.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+      </div></td>
+    </tr>`).join(''):'<tr class="tr-empty"><td colspan="7">Nenhuma mensagem.</td></tr>';
+}
+
+let mSearchTimer;
+$('m-search').addEventListener('input',e=>{
+  clearTimeout(mSearchTimer);
+  mSearchTimer=setTimeout(()=>{
+    const q=e.target.value.toLowerCase();
+    const f=allMsgs.filter(m=>m.sender_username.toLowerCase().includes(q)||m.recipient_username.toLowerCase().includes(q)||(m.content||'').toLowerCase().includes(q));
+    $('m-count').textContent=f.length+' mensagens';
+    renderMsgs(f);
+  },200);
+});
+
+window.editMsg=function(id){
+  const m=allMsgs.find(x=>x.id===id);if(!m)return;
+  openModal(`
+    <div class="mt">Editar mensagem <span class="mo mu">#${m.id}</span></div>
+    <div class="mrow"><label>Conteúdo</label><textarea class="minput" id="em-c" placeholder="Conteúdo da mensagem">${esc(m.content||'')}</textarea></div>
+    <div class="mhint">De @${esc(m.sender_username)} → @${esc(m.recipient_username)} · ${fmtDate(m.timestamp)}</div>
+    <div class="macts"><button class="mbtn cancel" onclick="closeModal()">Cancelar</button><button class="mbtn save" onclick="saveMsg(${m.id})">Salvar</button></div>`);
+};
+window.saveMsg=async function(id){
+  try{const updated=await api(`/admin/api/messages/${id}`,{method:'PATCH',body:JSON.stringify({content:$('em-c').value})});allMsgs=allMsgs.map(m=>m.id===id?{...m,...updated}:m);renderMsgs(allMsgs);closeModal();toast('Mensagem atualizada!');}catch(e){toast(e.message,'err');}
+};
+window.confirmDeleteMsg=function(id){openModal(`<div class="mt">Deletar mensagem <span class="mo mu">#${id}</span>?</div><div class="cbody">Irreversível.</div><div class="macts"><button class="mbtn cancel" onclick="closeModal()">Cancelar</button><button class="mbtn danger" onclick="deleteMsg(${id})">Deletar</button></div>`);};
+window.deleteMsg=async function(id){closeModal();try{await api(`/admin/api/messages/${id}`,{method:'DELETE'});allMsgs=allMsgs.filter(m=>m.id!==id);renderMsgs(allMsgs);$('m-count').textContent=allMsgs.length+' mensagens';toast('Mensagem deletada.');}catch(e){toast(e.message,'err');}};
+
+/* ── EVENTS ── */
+$('l-btn').onclick=doLogin;
+['l-email','l-pass'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();}));
+$('logout-btn').onclick=()=>{if(confirm('Sair do painel?'))doLogout();};
+
+// Auto login — se já tem token salvo, mostra o painel direto
+// Se o token expirou, a primeira chamada de API vai retornar erro e mostrar a mensagem
+if(token){
+  me={username:'hydra'};
+  showApp();
+}
+})();
+</script>
+</body>
+</html>

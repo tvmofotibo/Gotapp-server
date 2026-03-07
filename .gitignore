@@ -1,0 +1,32 @@
+# Ambiente virtual
+venv/
+
+# Variáveis de ambiente
+.env
+
+# Banco de dados
+*.db
+
+# Cache python
+__pycache__/
+*.pyc
+
+# Certificados
+cert.pem
+key.pem
+
+# Uploads
+uploads/
+
+# Banco de dados
+got_app.db
+
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Pasta de uploads
+uploads/
+
+# Logs
+server.log
